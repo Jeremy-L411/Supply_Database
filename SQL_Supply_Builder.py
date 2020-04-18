@@ -1,12 +1,16 @@
 import sqlite3
 from _sqlite3 import Error
+from _sqlite3 import OperationalError
 import pandas as pd
 from pandas import DataFrame
-from _sqlite3 import OperationalError
+import os
+import sys
 
-"""A Program that creates tables, inserts data from .csv files, adds single lines and able to delete
+"""
+    A Program that creates tables, inserts data from .csv files, adds single lines, delete
     single lines without having to use SQL code. This program also works with EXP_Dates, but only if the 
-    table names are in Box0, Box1 etc. format. """
+    table names are in Box0, Box1 etc. format.
+    """
 
 
 def create_connection(db_file):
@@ -22,8 +26,51 @@ def create_connection(db_file):
     return conn
 
 
+def create_new_db(path):
+    """Creates a new database if one is not already created"""
+    conn = sqlite3.connect(path)
+    conn.commit()
+    conn.close()
+
+
+def find_db():
+    """Searches directory where program is located for db, if none
+        found asks for location of the db and returns location.
+        if answer no exits program. Later implementation will write
+        db location to a file and read read from file first, then
+        current directory and then ask, if no db found will ask if
+        wanted to create a db"""
+
+    try:
+        with os.scandir(os.getcwd()) as it:
+            for entry in it:
+                if entry.name.endswith('.db'):
+                    db = entry.name
+                    break
+            else:
+                raise FileExistsError
+
+    except FileExistsError:
+        print("No data base found here")
+        new_db = input("Is there another location (Yes, No)\n")
+        if new_db.lower() == ('no' or 'new' or 'create'):
+            create_db = input("Create new db or exit?\n")
+            if create_db.lower() == ('new' or 'create'):
+                db_name = input('DB path and Name?\n'
+                                'ex: /Users/user/Desktop/test.db\n')
+                create_new_db(db_name)
+                db = create_connection(db_name)
+            else:
+                sys.exit()
+        else:
+            db = input("Where is the DB?\n")
+    return db
+
+
 def print_data(conn, table):
-    """Returns all data in a table"""
+    """Returns all data in a table
+        Future, make own categories or preset ones for this program
+        """
 
     c = conn.cursor()
     c.execute("""Select * FROM {}""".format(table))
@@ -96,67 +143,65 @@ def remove_item(conn, table, item):
     """Removes a single item from a table"""
 
     c = conn.cursor()
-    c.execute("""Delete from {0} where product = {1}""".format(table, item))
+    c.execute("""DELETE FROM {0} WHERE PRODUCT = '{1}'""".format(table, item))
 
     conn.commit()
     print_data(conn, table)
 
 
 def main():
+
     session = 'open'
     while session == 'open':
         try:
-            test = input("What would you like to do? \n"
-                         "Insert file into table? \n"
-                         "Make a new table? \n"
-                         "Remove item? \n"
-                         "Insert single item? \n")
+            test = input("What would you like to do?\n"
+                         "Insert file into table?\n"
+                         "Make a new table?\n"
+                         "Remove item?\n"
+                         "Insert single item?\n")
 
-            database = r".../Test_DB.db"
             conn = create_connection(database)
 
             if ("insert" and "file") in test.lower():
                 complete = 'no'
-                while complete == ("no" or 'No'):
-                    file_location = input("Where is the file? \n")
+                while complete == 'no':
+                    file_location = input("Where is the file?\n")
                     show_tables(conn)
-                    imp_table = input("Which table? \n")
+                    imp_table = input("Which table?\n")
 
                     csv_insert(conn, file_location, imp_table)
-                    complete = input("Are you finished? \n")
+                    complete = input("Are you finished?\n").lower()
 
-            elif ("make" or "table") in test.lower():
+            elif ("make" and "table") in test.lower():
                 new_table = 'no'
-                while new_table == ('no' or 'No'):
+                while new_table == 'no':
                     print("Current Tables:")
                     show_tables(conn)
-                    table_name = input("What table name? \n")
+                    table_name = input("What table name?\n")
 
                     make_table(conn, table_name)
-                    new_table = input("Finished adding tables? \n")
+                    new_table = input("Finished adding tables?\n").lower()
 
             elif "remove" in test.lower():
                 remove = 'no'
-                while remove == ('no' or 'No'):
+                while remove == 'no':
                     show_tables(conn)
-                    table = input('What table is this in? \n')
+                    table = input('What table is this in?\n')
                     print_data(conn, table)
-                    item = input('What item are we removing? \n')
+                    item = input('What product are we removing?\n')
 
                     remove_item(conn, table, item)
-                    remove = input('Finished removing items from {}? \n'.format(table))
+                    remove = input('Finished removing items?\n').lower()
 
             elif ("insert" or "single") in test.lower():
                 item_add = 'no'
-                while item_add == ('no' or 'No'):
+                while item_add == 'no':
                     show_tables(conn)
-                    table = input('What table would you like to add to? \n')
-                    # todo add check if var in table list
-                    # if table not in show_tables(conn):
-                    #     raise OperationalError
+                    table = input('What table would you like to add to?\n')
+
 
                     add_item(conn, table)
-                    item_add = input('Finished adding? \n')
+                    item_add = input('Finished adding?\n').lower()
 
             else:
                 raise OperationalError
@@ -165,8 +210,14 @@ def main():
             conn.close()
             session = 'closed'
         except OperationalError:
-            print("lets try that again! \n")
+            print("lets try that again!\n")
 
 
 if __name__ == '__main__':
-    main()
+
+    database = find_db()
+
+    project = "no"
+    while project == "no":
+        main()
+        project = input("are you finished with the database?\nYes, No?\n").lower()
