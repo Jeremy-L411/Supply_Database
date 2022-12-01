@@ -203,7 +203,7 @@ def __main__():
 
     while session:
         try:
-            print("You are working in {} Database!".format(database.rsplit('/', 1)[1]))
+            print("You are working in {} Database!".format(database.rsplit('/', 1)[1]))  # if working in windows change to .rsplit('\\'...)
             process = input("What would you like to do?\n"
                             "* Note, phrases must be typed exactly *\n\n"
                             "Make a new table?\n"
